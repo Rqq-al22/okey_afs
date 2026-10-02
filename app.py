@@ -2,97 +2,95 @@ import datetime
 import pandas as pd
 import streamlit as st
 
-# Konfigurasi Halaman
+# Page Configuration
 st.set_page_config(
     page_title="Lecturer Task Prioritizer", page_icon="📑", layout="centered"
 )
 
 st.title("📑 Smart Task Prioritizer for Lecturers")
 st.write(
-    "Aplikasi sederhana untuk mengurutkan prioritas tugas mengajar, memeriksa berkas, dan riset berdasarkan **Weighted Scoring Algorithm** & **Eisenhower Matrix**."
+    "A simple web application designed to automatically prioritize academic workload, lecture prep, and grading tasks using a **Weighted Scoring Algorithm** and the **Eisenhower Matrix**."
 )
 
-# Inisialisasi State Penyimpanan Tugas
+# Initialize Session State
 if "task_list" not in st.session_state:
     st.session_state.task_list = []
 
-# --- FORM INPUT TUGAS ---
+# --- TASK INPUT FORM ---
 with st.form("task_form", clear_on_submit=True):
-    st.subheader("➕ Tambah Tugas Baru")
+    st.subheader("➕ Add New Task")
 
     task_name = st.text_input(
-        "Nama Tugas", placeholder="Contoh: Koreksi UTS Kelas A"
+        "Task Title", placeholder="e.g., Grade Midterm Exams - Class A"
     )
 
     col1, col2 = st.columns(2)
     with col1:
         urgency = st.slider(
-            "Tingkat Urgensi (Mendesak)",
+            "Urgency Level",
             1,
             5,
             3,
-            help="1 = Sangat Santai, 5 = Sangat Mendesak / H-1",
+            help="1 = Low urgency / Plenty of time, 5 = Critical / Due soon",
         )
     with col2:
         importance = st.slider(
-            "Tingkat Kepentingan (Dampak)",
+            "Importance Level",
             1,
             5,
             3,
-            help="1 = Dampak Kecil, 5 = Sangat Penting (Wajib)",
+            help="1 = Low impact, 5 = High impact / Required",
         )
 
     deadline = st.date_input("Deadline", datetime.date.today())
 
-    submitted = st.form_submit_button("Hitung & Tambahkan")
+    submitted = st.form_submit_button("Calculate & Add Task")
 
     if submitted and task_name:
-        # Algoritma Weighted Scoring: Hitung Skor Prioritas
-        # Rumus: (Urgensi x 0.4) + (Kepentingan x 0.4) + (Faktor Deadline x 0.2)
+        # Weighted Scoring Algorithm
+        # Priority Score = (Urgency x 0.4) + (Importance x 0.4) + (Deadline Proximity x 0.2)
         days_left = (deadline - datetime.date.today()).days
-        deadline_score = max(
-            1, 5 - max(0, days_left)
-        )  # Makin dekat deadline, skor makin tinggi (max 5)
+        deadline_score = max(1, 5 - max(0, days_left))
 
         priority_score = (
             (urgency * 0.4) + (importance * 0.4) + (deadline_score * 0.2)
         )
 
-        # Penentuan Kuadran Eisenhower
+        # Eisenhower Matrix Category Assignment
         if urgency >= 3 and importance >= 3:
-            quadrant = "🔴 Do First (Sangat Penting & Mendesak)"
+            quadrant = "🔴 Do First (Urgent & Important)"
         elif urgency < 3 and importance >= 3:
-            quadrant = "🔵 Schedule (Penting, Tidak Mendesak)"
+            quadrant = "🔵 Schedule (Important, Not Urgent)"
         elif urgency >= 3 and importance < 3:
-            quadrant = "🟡 Delegate (Mendesak, Kurang Penting)"
+            quadrant = "🟡 Delegate (Urgent, Not Important)"
         else:
-            quadrant = "⚪ Don't Do / Later (Bisa Ditunda)"
+            quadrant = "⚪ Don't Do / Later (Low Priority)"
 
         st.session_state.task_list.append({
-            "Tugas": task_name,
+            "Task": task_name,
             "Deadline": deadline.strftime("%Y-%m-%d"),
-            "Skor Prioritas": round(priority_score, 2),
-            "Kategori Kuadran": quadrant,
+            "Priority Score": round(priority_score, 2),
+            "Eisenhower Category": quadrant,
         })
-        st.success(f"Tugas '{task_name}' berhasil ditambahkan!")
+        st.success(f"Task '{task_name}' added successfully!")
 
-# --- DISPLAY & SORTING TUGAS ---
+# --- DISPLAY & SORT TASKS ---
 st.divider()
-st.subheader("📋 Daftar Prioritas Tugas")
+st.subheader("📋 Prioritized Task List")
 
 if st.session_state.task_list:
-    # Ubah data ke Pandas DataFrame & Urutkan berdasar Skor Prioritas (Descending)
+    # Convert list to DataFrame and sort by Priority Score (Descending)
     df = pd.DataFrame(st.session_state.task_list)
-    df = df.sort_values(by="Skor Prioritas", ascending=False).reset_index(
+    df = df.sort_values(by="Priority Score", ascending=False).reset_index(
         drop=True
     )
 
-    # Tampilkan Tabel Hasil Sorting
+    # Render Table
     st.dataframe(df, use_container_width=True)
 
-    # Tombol Reset
-    if st.button("Hapus Semua Data"):
+    # Clear Data Button
+    if st.button("Clear All Tasks"):
         st.session_state.task_list = []
         st.rerun()
 else:
-    st.info("Belum ada tugas yang dimasukkan. Silakan isi form di atas!")
+    st.info("No tasks added yet. Fill out the form above to get started!")
